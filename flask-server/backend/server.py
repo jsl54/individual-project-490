@@ -92,6 +92,19 @@ def getActors():
     # Return the results in JSON format
     return jsonify({'actor': topActors})
 
+@app.route('/displayActorDetails/<int:actor_id>', methods=['GET'])
+def getActorDetails(actor_id):
+    query = text('''
+    SELECT a.actor_id, a.first_name, a.last_name, f.title
+    FROM actor a
+    JOIN film_actor fa ON a.actor_id = fa.actor_id
+    JOIN film f ON fa.film_id = f.film_id;
+    ''')
+    
+    result = db.session.execute(query, {"actor_id": actor_id})
+    actor_details = [{'actor_id:':row.actor_id, 'first_name:': row.first_name, 'last_name:': row.last_name, 'film_title:': row.title} for row in result]
+    return jsonify({'actor_details': actor_details})
+
 @app.route('/displayFilmDetails/<int:film_id>', methods=['GET'])
 def getDetails(film_id):
     # Define the SQL query
