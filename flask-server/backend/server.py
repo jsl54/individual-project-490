@@ -95,14 +95,24 @@ def getActors():
 @app.route('/displayActorDetails/<int:actor_id>', methods=['GET'])
 def getActorDetails(actor_id):
     query = text('''
-    SELECT a.actor_id, a.first_name, a.last_name, f.title
+    SELECT a.actor_id, a.first_name, a.last_name, f.title, f.description, f.release_year, f.length, f.rating, c.name, COUNT(*) as rental_count
     FROM actor a
     JOIN film_actor fa ON a.actor_id = fa.actor_id
-    JOIN film f ON fa.film_id = f.film_id;
+    JOIN film f ON fa.film_id = f.film_id
+    JOIN film_category fc ON fc.film_id = f.film_id
+    JOIN category c ON c.category_id = fc.category_id
+    JOIN inventory i ON f.film_id = i.film_id
+    JOIN rental r ON i.inventory_id = r.inventory_id
+    WHERE a.actor_id = :actor_id
+    GROUP BY a.actor_id, a.first_name, a.last_name, f.title, f.description, f.release_year, f.length, f.rating, c.name
+    ORDER BY rental_count DESC
+    LIMIT 5;
     ''')
     
     result = db.session.execute(query, {"actor_id": actor_id})
-    actor_details = [{'actor_id:':row.actor_id, 'first_name:': row.first_name, 'last_name:': row.last_name, 'film_title:': row.title} for row in result]
+    actor_details = [{'actor_id':row.actor_id, 'first_name': row.first_name, 'last_name': row.last_name, 'film_title': row.title,
+                      'description': row.description, 'release_year': row.release_year, 'length': row.length, 
+                      'rating': row.rating, 'category': row.name} for row in result]
     return jsonify({'actor_details': actor_details})
 
 @app.route('/displayFilmDetails/<int:film_id>', methods=['GET'])
@@ -110,7 +120,7 @@ def getDetails(film_id):
     # Define the SQL query
     query = text('''
     SELECT f.title, f.description, f.release_year, f.length, f.rating, f.special_features, 
-           f.rental_duration, f.rental_rate, i.film_id, COUNT(i.inventory_id) AS Total_Available
+           f.rental_duration, f.rental_rate, i.film_id, COUNT(*) AS Total_Available
     FROM film f
     JOIN inventory i ON f.film_id = i.film_id
     WHERE i.film_id = :film_id

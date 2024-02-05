@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import { ChakraProvider } from "@chakra-ui/react";
-import { BrowserRouter as Router, Route, Routes, Link, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, useParams, useNavigate } from 'react-router-dom';
 import { Center, Text, Heading, Box, HStack, Flex, Button, Input } from "@chakra-ui/react";
 import axios from 'axios';
 
@@ -15,6 +15,7 @@ function App() {
           <Route path="/FiveMovies" element={<FiveMovies />} />
           <Route path="/displayFilmDetails/:film_id" element={<DisplayFilmDetails />} />
           <Route path="/SearchFilmName" element={<SearchFilmName />} />
+          <Route path="/displayActorDetails/:actor_id" element={<DisplayActorDetails />} />
         </Routes>
       </ChakraProvider>
     </Router>
@@ -189,7 +190,7 @@ const FiveActorsList = () => {
       <ul>
         <Box p="3" size="5" mt="4" display="flex" flexDirection="column" alignItems="center">
           {actor.map(actors => (
-            <Link to={`/displayActorDetails/${actor.actor_id}`} key={actor.actor_id}>
+            <Link to={`/displayActorDetails/${actors.actor_id}`}>
               <Button
                 variant="outline"
                 size="lg"
@@ -200,10 +201,47 @@ const FiveActorsList = () => {
                 {' '}
                 {actors.last_name}
               </Button>
-              {console.log(actor.actor_id)}
             </Link>
           ))}
         </Box>
+      </ul>
+    </div>
+  );
+};
+
+const DisplayActorDetails = () => {
+  const { actor_id } = useParams();
+  const [actor_details, setDetails] = useState([]);
+
+  useEffect(() => {
+    axios.get(`http://localhost:5000/displayActorDetails/${actor_id}`)
+      .then(response => {
+        setDetails(response.data.actor_details);
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error);
+      });
+  }, [actor_id]);
+
+  return (
+    <div>
+      <Box>
+        <Center bg="blue" h="70px" color="black">
+          <Heading as="h1">Actor Details (Top 5 Rented Movies)</Heading>
+        </Center>
+      </Box>
+      <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
+        {actor_details.map(ad => (
+          <li key={ad.film_title} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+            <p><strong>Actor:</strong> {ad.first_name}{' '}{ad.last_name}</p>
+            <p><strong>Film:</strong> {ad.film_title}</p>
+            <p><strong>Description:</strong> {ad.description}</p>
+            <p><strong>Release Year:</strong> {ad.release_year}</p>
+            <p><strong>Category:</strong> {ad.category}</p>
+            <p><strong>Movie Length:</strong> {ad.length} minutes</p>
+            <p><strong>Rating:</strong> {ad.rating}</p>
+          </li>
+        ))}
       </ul>
     </div>
   );
@@ -252,14 +290,17 @@ const DisplayFilmDetails = () => {
 
 // displays 3 options to search: search by film name, actors, and genre
 const SearchFilmName = () => {
+  const navigate = useNavigate(); // Import useNavigate from react-router-dom
   const [searchInput, setSearchInput] = useState('');
-  const [setSearchResults] = useState([]);
 
-  // Once the user enters text to search, component correctly outputs search results
   const handleSearch = () => {
     axios.get(`http://localhost:5000/searchByTitle/${searchInput}`)
       .then(response => {
-        setSearchResults(response.data.film);
+        // Assuming the API response contains a film ID for redirection
+        const filmId = response.data.film.id;
+
+        // Redirect to the film details page
+        navigate(`/displayFilmDetails/${filmId}`);
       })
       .catch(error => {
         console.error('Error fetching search results:', error);
@@ -270,7 +311,7 @@ const SearchFilmName = () => {
     <>
       <Center bg="blue" h="70px" color="black">
         <header>
-            <Heading>Search By Film Name</Heading>
+          <Heading>Search By Film Name</Heading>
         </header>
       </Center>
       <Box ml='20px' my='20px' mr="85%">
@@ -303,6 +344,7 @@ export {
   FiveMoviesList, 
   FiveActorsList,
   DisplayFilmDetails,
-  SearchFilmName}; 
+  SearchFilmName,
+  DisplayActorDetails}; 
 
 export default App;
