@@ -63,10 +63,15 @@ const HomePage = () => {
             </Text>
           </Box>
         </HStack>
-        <Flex flexDirection="column" w="48%">
-          <NavLink to="/FiveMovies">Top 5 Rented Movies Of All Time</NavLink>
-          <NavLink to="/FiveActors">Top 5 Actors By Number of Films</NavLink>
-          <NavLink to="/FilmSearch">Film Search</NavLink>
+        <Flex flexDirection="row">
+          <Flex flexDirection="column" mr={4} w ="48%" ml="5px">
+            <NavLink to="/FiveMovies">Top 5 Rented Movies Of All Time</NavLink>
+            <NavLink to="/FiveActors">Top 5 Actors By Number of Films</NavLink>
+            <NavLink to="/FilmSearch">Film Search</NavLink>
+          </Flex>
+          <Flex flexDirection="column" w="48%">
+            <NavLink to="/viewCustomers">View Customers</NavLink>
+          </Flex>
         </Flex>
       </div>
     </>
@@ -130,34 +135,6 @@ const FilmSearch = () => {
       </>
   )
 };
-
-// Display a list of the top 5 rented movies
-const FiveMoviesList = () => {
-  const [films, setFilms] = useState([]);
-
-  useEffect(() => {
-    axios.get('http://localhost:5000/topFiveFilms')  // grabs the data from the flask api location specified
-      .then(response => {
-        setFilms(response.data.film);
-      })
-      .catch(error => {
-        console.error('Error fetching data:', error);
-      });
-  }, []);
-
-  return (
-    <div>
-      <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
-        {films.map(film => (
-          <li key={film.film_id}>
-            {film.title}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
 
 // component to display the page for the top 5 actors by the number of films
 const FiveActors = () => {
@@ -545,18 +522,5 @@ const SearchFilmActor = () => {
     </>
   );
 };
-
-
-// export the necessary components
-export { 
-  HomePage, 
-  FiveMovies, 
-  FilmSearch, 
-  FiveActors, 
-  FiveMoviesList, 
-  FiveActorsList,
-  DisplayFilmDetails,
-  SearchFilmName,
-  DisplayActorDetails}; 
 
 export default App;
