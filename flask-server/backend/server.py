@@ -34,6 +34,29 @@ class Actor(db.Model):
     first_name = db.Column(db.String(45))
     last_name = db.Column(db.String(45))
 
+class Customer(db.Model):
+    __tablename__ = 'customer'
+    customer_id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer)
+    first_name = db.Column(db.String(45))
+    last_name = db.Column(db.String(45))
+    email = db.Column(db.String(100))
+    address_id = db.Column(db.Integer)
+    active = db.Column(db.Integer)
+    create_date = db.Column(db.String(30))
+
+@app.route('/viewCustomers', methods=['GET'])
+def getCustomers():
+    query= text('''
+        SELECT c.first_name, c.last_name, c.customer_id, c.email, c.address_id, c.store_id
+        FROM customer c;
+    ''')
+    
+    result = db.session.execute(query)
+    customers=[{'first_name': row.first_name, 'last_name': row.last_name, 'customer_id': row.customer_id,
+                'email': row.email, 'address_id': row.address_id, 'store_id': row.store_id} for row in result]
+    return jsonify({'customers': customers})
+
 @app.route('/searchByTitle/<string:title>', methods=['GET'])
 def getFilmByTitle(title):
     query = text('''
