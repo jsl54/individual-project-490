@@ -49,15 +49,31 @@ def getFilmByTitle(title):
 @app.route('/searchByCategory/<string:category>', methods=['GET'])
 def getFilmsByCategory(category):
     query = text('''
-        SELECT f.film_id, fc.category_id, c.name
+        SELECT f.film_id, f.title, fc.category_id, c.name
         FROM film f
         JOIN film_category fc ON f.film_id = fc.film_id
-        JOIN category c ON fc.category_id = fc.category_id;
+        JOIN category c ON fc.category_id = c.category_id
+        WHERE c.name = :category;
     ''')
     
     result = db.session.execute(query, {"category": category})
-    foundCategory=[{'film_id': row.film_id, 'category_id': row.category_id, 'name': row.name} for row in result]
+    foundCategory=[{'film_id': row.film_id, 'title': row.title, 'category_id': row.category_id, 'name': row.name} for row in result]
     return jsonify({'category': foundCategory})
+
+@app.route('/searchByActor/<string:name>', methods=['GET'])
+def getFilmsByActor(name):
+    query = text('''
+        SELECT a.actor_id, a.first_name, a.last_name, f.film_id, f.title
+        FROM actor a
+        JOIN film_actor fa ON fa.actor_id = a.actor_id
+        JOIN film f ON fa.film_id = f.film_id
+        WHERE CONCAT(a.first_name, ' ', a.last_name) = :name;
+    ''')
+    
+    result = db.session.execute(query, {'name': name})
+    foundActor=[{'actor_id': row.actor_id, 'first_name': row.first_name, 'last_name': row.last_name,
+                 'film_id': row.film_id, 'title': row.title} for row in result]
+    return jsonify({'name': foundActor})
 
 @app.route('/topFiveFilms', methods=['GET'])
 def getMovies():
@@ -132,12 +148,14 @@ def getActorDetails(actor_id):
 def getDetails(film_id):
     # Define the SQL query
     query = text('''
-    SELECT f.title, f.description, f.release_year, f.length, f.rating, f.special_features, 
+    SELECT f.title, f.description, f.release_year, fc.category_id, c.name, f.length, f.rating, f.special_features, 
            f.rental_duration, f.rental_rate, i.film_id, COUNT(*) AS Total_Available
     FROM film f
     JOIN inventory i ON f.film_id = i.film_id
+    JOIN film_category fc ON f.film_id = fc.film_id
+    JOIN category c ON c.category_id = fc.category_id
     WHERE i.film_id = :film_id
-    GROUP BY f.title, f.description, f.release_year, f.length, f.rating, f.special_features, f.rental_duration, f.rental_rate, i.film_id;
+    GROUP BY f.title, f.description, f.release_year, fc.category_id, c.name, f.length, f.rating, f.special_features, f.rental_duration, f.rental_rate, i.film_id;
     ''')
 
     # Execute the query
@@ -145,8 +163,8 @@ def getDetails(film_id):
 
     # Convert the result to a list of dictionaries
     film_details = [{'title': row.title, 'description': row.description, 'release_year': row.release_year,
-                     'length': row.length, 'rating': row.rating, 'special_features': row.special_features,
-                     'rental_duration': row.rental_duration, 'rental_rate': row.rental_rate,
+                     'category_name': row.name, 'category_id': row.category_id, 'length': row.length, 'rating': row.rating, 
+                     'special_features': row.special_features,'rental_duration': row.rental_duration, 'rental_rate': row.rental_rate,
                      'film_id': row.film_id, 'total_available': row.Total_Available} for row in result]
 
     # Return the results in JSON format

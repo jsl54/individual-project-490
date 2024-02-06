@@ -1,9 +1,11 @@
+// import necessary libraries
 import React, {useState, useEffect} from 'react';
 import { ChakraProvider } from "@chakra-ui/react";
 import { BrowserRouter as Router, Route, Routes, Link, useParams, useNavigate } from 'react-router-dom';
 import { Center, Text, Heading, Box, HStack, Flex, Button, Input } from "@chakra-ui/react";
 import axios from 'axios';
 
+// defines app component, creates paths to different components with app.js once a button is clicked or an action is done
 function App() {
   return (
     <Router>
@@ -16,6 +18,8 @@ function App() {
           <Route path="/displayFilmDetails/:film_id" element={<DisplayFilmDetails />} />
           <Route path="/SearchFilmName" element={<SearchFilmName />} />
           <Route path="/displayActorDetails/:actor_id" element={<DisplayActorDetails />} />
+          <Route path="/SearchFilmGenre" element={<SearchFilmGenre />} />
+          <Route path="/SearchFilmActor" element={<SearchFilmActor />} />
         </Routes>
       </ChakraProvider>
     </Router>
@@ -69,7 +73,8 @@ const HomePage = () => {
   );
 }
 
-// Displays the top 5 rented movies to the user once the button is clicked
+// Displays the top 5 rented movies to the user once the button is clicked. Once a movie is clicked on, it redirects to /displayFilmDetails
+// where it searches by film_id and displays the film information
 const FiveMovies = () => {
   const [films, setFilms] = useState([]);
 
@@ -288,6 +293,7 @@ const DisplayFilmDetails = () => {
             <h2 style={{ marginBottom: '8px', color: '#333' }}>{d.title}</h2>
             <p><strong>Description:</strong> {d.description}</p>
             <p><strong>Release Year:</strong> {d.release_year}</p>
+            <p><strong>Category:</strong> {d.category_name}</p>
             <p><strong>Length:</strong> {d.length} minutes</p>
             <p><strong>Rating:</strong> {d.rating}</p>
             <p><strong>Special Features:</strong> {d.special_features}</p>
@@ -326,7 +332,8 @@ const SearchFilmName = () => {
   
         if (films.length > 0) {
           const filmId = films[0].film_id;
-          navigate(`/displayFilmDetails/${filmId}`);
+          navigate(`/displayFilmDetails/${filmId}`) 
+          setErrorMessage('');
         } else {
           setErrorMessage('Sorry, that movie was not found. Try a different movie');
           // Handle the case where no films are found
@@ -372,6 +379,173 @@ const SearchFilmName = () => {
     </>
   );
 };
+
+const SearchFilmGenre = () => {
+  const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState('');
+  const [films, setFilms] = useState([]);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleSearch = () => {
+    axios.get(`http://localhost:5000/searchByCategory/${searchInput}`)
+    .then(response => {
+      const categoryFilms = response.data.category;
+      console.log(response.data)
+
+      if (categoryFilms.length > 0) {
+        setFilms(categoryFilms); // Set films in state
+        setErrorMessage(''); // Clear error message
+      } else {
+        setFilms([]); // Clear films state
+        setErrorMessage('Sorry, that film category was not found. Try a different category');
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching search results:', error);
+      setFilms([]); // Clear films state
+      setErrorMessage('An error occurred while searching for the movie.');
+    });
+};
+
+  const handleFilmClick = (filmId) => {
+    navigate(`/displayFilmDetails/${filmId}`);
+  };
+
+  return (
+    <>
+      <Center bg="blue" h="70px" color="black">
+        <header>
+          <Heading>Search By Category Name</Heading>
+        </header>
+      </Center>
+      <Box ml='20px' my='20px' mr="85%">
+        <Input
+          type="text"
+          placeholder="Enter category"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+        <Button
+          variant="outline"
+          colorScheme="black"
+          size="lg"
+          m="2"
+          onClick={handleSearch}
+        >
+          Search
+        </Button>
+      </Box>
+      <Box>
+        {errorMessage && (
+          <Box ml='20px' color="red">
+            {errorMessage}
+          </Box>
+        )}
+      </Box>
+      <Flex ml='20px' my='20px' flexDirection="column">
+        {films.map(film => (
+          <Box
+            key={film.film_id}
+            bg="cyan.500"
+            color="black"
+            p="4"
+            m="2"
+            borderRadius="md"
+            textAlign="center" // Center the text
+            onClick={() => handleFilmClick(film.film_id)}
+            cursor="pointer"
+          >
+            {film.title}
+          </Box>
+        ))}
+      </Flex>
+    </>
+  );
+};
+
+const SearchFilmActor = () => {
+  const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState('');
+  const [films, setFilms] = useState([]); // Initialize as an empty array
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleSearch = () => {
+    axios.get(`http://localhost:5000/searchByActor/${searchInput}`)
+      .then(response => {
+        const actorFilms = response.data.name; 
+        console.log(response.data);
+
+        if (actorFilms.length > 0) {
+          setFilms(actorFilms); // Set films in state
+          setErrorMessage(''); // Clear error message
+        } else {
+          setFilms([]); // Clear films state
+          setErrorMessage('Sorry, no films found for that actor. Try a different name.');
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching search results:', error);
+        setFilms([]); // Clear films state
+        setErrorMessage('An error occurred while searching for the movies.');
+      });
+  };
+
+  const handleFilmClick = (filmId) => {
+    navigate(`/displayFilmDetails/${filmId}`);
+  };
+
+  return (
+    <>
+      <Center bg="blue" h="70px" color="black">
+        <header>
+          <Heading>Search By Actor Name</Heading>
+        </header>
+      </Center>
+      <Box ml='20px' my='20px' mr="85%">
+        <Input
+          type="text"
+          placeholder="Enter actor"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+        <Button
+          variant="outline"
+          colorScheme="black"
+          size="lg"
+          m="2"
+          onClick={handleSearch}
+        >
+          Search
+        </Button>
+      </Box>
+      <Box>
+        {errorMessage && (
+          <Box ml='20px' color="red">
+            {errorMessage}
+          </Box>
+        )}
+      </Box>
+      <Flex ml='20px' my='20px' flexDirection="column">
+        {films.map(film => (
+          <Box
+            key={film.film_id}
+            bg="cyan.500"
+            color="black"
+            p="4"
+            m="2"
+            borderRadius="md"
+            textAlign="center" // Center the text
+            onClick={() => handleFilmClick(film.film_id)}
+            cursor="pointer"
+          >
+            {film.title}
+          </Box>
+        ))}
+      </Flex>
+    </>
+  );
+};
+
 
 // export the necessary components
 export { 
