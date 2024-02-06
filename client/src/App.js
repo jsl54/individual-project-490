@@ -230,19 +230,32 @@ const DisplayActorDetails = () => {
           <Heading as="h1">Actor Details (Top 5 Rented Movies)</Heading>
         </Center>
       </Box>
-      <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
-        {actor_details.map(ad => (
-          <li key={ad.film_title} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-            <p><strong>Actor:</strong> {ad.first_name}{' '}{ad.last_name}</p>
-            <p><strong>Film:</strong> {ad.film_title}</p>
-            <p><strong>Description:</strong> {ad.description}</p>
-            <p><strong>Release Year:</strong> {ad.release_year}</p>
-            <p><strong>Category:</strong> {ad.category}</p>
-            <p><strong>Movie Length:</strong> {ad.length} minutes</p>
-            <p><strong>Rating:</strong> {ad.rating}</p>
-          </li>
-        ))}
-      </ul>
+        <ul style={{ listStyleType: 'none', padding: 0, margin: 0 }}>
+          {actor_details.map(ad => (
+            <>
+              <li key={ad.film_title} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '16px', marginBottom: '15px', marginTop:'20px'}}>
+                <p><strong>Actor:</strong> {ad.first_name}{' '}{ad.last_name}</p>
+                <p><strong>Film:</strong> {ad.film_title}</p>
+                <p><strong>Description:</strong> {ad.description}</p>
+                <p><strong>Release Year:</strong> {ad.release_year}</p>
+                <p><strong>Category:</strong> {ad.category}</p>
+                <p><strong>Movie Length:</strong> {ad.length} minutes</p>
+                <p><strong>Rating:</strong> {ad.rating}</p>
+              </li>
+              <Button
+                variant="outline"
+                colorScheme="black"
+                bg={"blue.500"}
+                textColor={"white"}
+                size="md"
+                ml='10px'
+                my='-10px'
+              >
+                Rent
+              </Button>
+            </>
+          ))}
+        </ul>
     </div>
   );
 };
@@ -284,6 +297,17 @@ const DisplayFilmDetails = () => {
           </li>
         ))}
       </ul>
+      <Button
+            variant="outline"
+            colorScheme="black"
+            bg={"blue.500"}
+            textColor={"white"}
+            size="md"
+            ml='10px'
+            my='-5px'
+          >
+            Rent
+        </Button>
     </div>
   );
 };
@@ -292,20 +316,27 @@ const DisplayFilmDetails = () => {
 const SearchFilmName = () => {
   const navigate = useNavigate(); // Import useNavigate from react-router-dom
   const [searchInput, setSearchInput] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSearch = () => {
     axios.get(`http://localhost:5000/searchByTitle/${searchInput}`)
       .then(response => {
-        // Assuming the API response contains a film ID for redirection
-        const filmId = response.data.film.id;
-
-        // Redirect to the film details page
-        navigate(`/displayFilmDetails/${filmId}`);
+        const films = response.data.film;
+        console.log(response.data)
+  
+        if (films.length > 0) {
+          const filmId = films[0].film_id;
+          navigate(`/displayFilmDetails/${filmId}`);
+        } else {
+          setErrorMessage('Sorry, that movie was not found. Try a different movie');
+          // Handle the case where no films are found
+        }
       })
       .catch(error => {
         console.error('Error fetching search results:', error);
+        setErrorMessage('An error occurred while searching for the movie.');
       });
-  };
+    };
 
   return (
     <>
@@ -330,6 +361,13 @@ const SearchFilmName = () => {
         >
           Search
         </Button>
+        </Box>
+          <Box>
+            {errorMessage && (
+              <Box ml='20px' color="red">
+                {errorMessage}
+              </Box>
+      )}
       </Box>
     </>
   );

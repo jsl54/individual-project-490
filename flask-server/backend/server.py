@@ -34,17 +34,30 @@ class Actor(db.Model):
     first_name = db.Column(db.String(45))
     last_name = db.Column(db.String(45))
 
-@app.route('/searchByTitle/<title>', methods=['GET'])
+@app.route('/searchByTitle/<string:title>', methods=['GET'])
 def getFilmByTitle(title):
     query = text('''
-    SELECT f.title
+    SELECT f.title, f.film_id
     FROM film f
     WHERE f.title = :title
     ''')
     
     result = db.session.execute(query, {"title": title})
-    foundFilm=[{'title': row.title} for row in result]
+    foundFilm=[{'title': row.title, "film_id": row.film_id} for row in result]
     return jsonify({'film': foundFilm})
+
+@app.route('/searchByCategory/<string:category>', methods=['GET'])
+def getFilmsByCategory(category):
+    query = text('''
+        SELECT f.film_id, fc.category_id, c.name
+        FROM film f
+        JOIN film_category fc ON f.film_id = fc.film_id
+        JOIN category c ON fc.category_id = fc.category_id;
+    ''')
+    
+    result = db.session.execute(query, {"category": category})
+    foundCategory=[{'film_id': row.film_id, 'category_id': row.category_id, 'name': row.name} for row in result]
+    return jsonify({'category': foundCategory})
 
 @app.route('/topFiveFilms', methods=['GET'])
 def getMovies():
