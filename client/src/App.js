@@ -2,7 +2,7 @@
 import React, {useState, useEffect} from 'react';
 import { ChakraProvider } from "@chakra-ui/react";
 import { BrowserRouter as Router, Route, Routes, Link, useParams, useNavigate } from 'react-router-dom';
-import { Center, Text, Heading, Box, HStack, Flex, Button, Input } from "@chakra-ui/react";
+import { Center, Text, Heading, Box, HStack, Flex, Button, Input, Td, Tr, Tbody, Table, Th, Thead } from "@chakra-ui/react";
 import axios from 'axios';
 
 // defines app component, creates paths to different components with app.js once a button is clicked or an action is done
@@ -20,6 +20,7 @@ function App() {
           <Route path="/displayActorDetails/:actor_id" element={<DisplayActorDetails />} />
           <Route path="/SearchFilmGenre" element={<SearchFilmGenre />} />
           <Route path="/SearchFilmActor" element={<SearchFilmActor />} />
+          <Route path="/ViewCustomerDetails" element={<ViewCustomerDetails />} />
         </Routes>
       </ChakraProvider>
     </Router>
@@ -70,13 +71,77 @@ const HomePage = () => {
             <NavLink to="/FilmSearch">Film Search</NavLink>
           </Flex>
           <Flex flexDirection="column" w="48%">
-            <NavLink to="/viewCustomers">View Customers</NavLink>
+            <NavLink to="/ViewCustomerDetails">View Customers</NavLink>
           </Flex>
         </Flex>
       </div>
     </>
   );
 }
+
+// Displays each and every customer in the database
+const ViewCustomerDetails = () => {
+  const [customers, setCustomers] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [customersPerPage] = useState(40); // Display the number of customers per page
+
+  // grabs the customer information from the database
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/viewCustomers');
+        setCustomers(response.data.customers);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Grabs the current customers based on the page
+  const indexOfLastCustomer = currentPage * customersPerPage;
+  const indexOfFirstCustomer = indexOfLastCustomer - customersPerPage;
+  const currentCustomers = customers.slice(indexOfFirstCustomer, indexOfLastCustomer);
+
+  //Change the page after clicking
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Display the customer information and stylize output
+  return (
+    <Box>
+      <Center bg="blue" h="70px" color="black">
+        <Heading as="h1">Customer Details</Heading>
+      </Center>
+      <Table variant="simple">
+        <Thead>
+          <Tr>
+            <Th>Customer_id</Th>
+            <Th>Name</Th>
+            <Th>Email</Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {currentCustomers.map(customer => (
+            <Tr key={customer.customer_id}>
+              <Td>{customer.customer_id}</Td>
+              <Td>{customer.first_name} {customer.last_name}</Td>
+              <Td>{customer.email}</Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+      <HStack spacing={2} mt={4}>
+        {Array.from({ length: Math.ceil(customers.length / customersPerPage) }).map((_, index) => (
+          <Button ml={'10px'} key={index} onClick={() => paginate(index + 1)} colorScheme={currentPage === index + 1 ? "blue" : "gray"}>
+            {index + 1}
+          </Button>
+        ))}
+      </HStack>
+    </Box>
+  );
+};
+
 
 // Displays the top 5 rented movies to the user once the button is clicked. Once a movie is clicked on, it redirects to /displayFilmDetails
 // where it searches by film_id and displays the film information
@@ -246,6 +311,8 @@ const DisplayActorDetails = () => {
 const DisplayFilmDetails = () => {
   const { film_id } = useParams();
   const [details, setDetails] = useState([]);
+  const [fullName, setFullName] = useState('');
+  const [showNameInput, setShowNameInput] = useState(false);
 
   useEffect(() => {
     axios.get(`http://localhost:5000/displayFilmDetails/${film_id}`)
@@ -256,6 +323,16 @@ const DisplayFilmDetails = () => {
         console.error('Error fetching data:', error);
       });
   }, [film_id]);
+
+  const handleRent = () => {
+    setShowNameInput(true); // Show the name input field
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    console.log(`Renting film ${film_id} for ${fullName}`);
+    // Add further functionality to handle the rental process here
+  };
 
   return (
     <div>
@@ -280,17 +357,44 @@ const DisplayFilmDetails = () => {
           </li>
         ))}
       </ul>
-      <Button
+      {!showNameInput && (
+        <Button
+          variant="outline"
+          colorScheme="black"
+          bg={"blue.500"}
+          textColor={"white"}
+          size="md"
+          ml='10px'
+          my='-5px'
+          onClick={handleRent} // Show name input when Rent button is clicked
+        >
+          Rent
+        </Button>
+      )}
+      {showNameInput && (
+        <form onSubmit={handleSubmit} style={{ marginTop: '16px' }}>
+          <Input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Enter your name"
+            size="sm" // Make the input smaller
+            style={{ padding: '8px', marginLeft: '10px', width: '15%', borderRadius: '4px', border: '1px solid #ccc' }}
+          />
+          <Button
             variant="outline"
             colorScheme="black"
             bg={"blue.500"}
             textColor={"white"}
             size="md"
             ml='10px'
-            my='-5px'
+            my='5px'
+            type="submit"
           >
-            Rent
-        </Button>
+            Confirm Rental
+          </Button>
+        </form>
+      )}
     </div>
   );
 };
