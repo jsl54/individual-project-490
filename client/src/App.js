@@ -325,13 +325,12 @@ const DisplayFilmDetails = () => {
   }, [film_id]);
 
   const handleRent = () => {
-    setShowNameInput(true); // Show the name input field
+    setShowNameInput(true); 
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     console.log(`Renting film ${film_id} for ${fullName}`);
-    // Add further functionality to handle the rental process here
   };
 
   return (
@@ -366,7 +365,7 @@ const DisplayFilmDetails = () => {
           size="md"
           ml='10px'
           my='-5px'
-          onClick={handleRent} // Show name input when Rent button is clicked
+          onClick={handleRent} 
         >
           Rent
         </Button>
@@ -378,7 +377,7 @@ const DisplayFilmDetails = () => {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Enter your name"
-            size="sm" // Make the input smaller
+            size="sm" 
             style={{ padding: '8px', marginLeft: '10px', width: '15%', borderRadius: '4px', border: '1px solid #ccc' }}
           />
           <Button
@@ -401,7 +400,7 @@ const DisplayFilmDetails = () => {
 
 // displays 3 options to search: search by film name, actors, and genre
 const SearchFilmName = () => {
-  const navigate = useNavigate(); // Import useNavigate from react-router-dom
+  const navigate = useNavigate(); 
   const [searchInput, setSearchInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -474,16 +473,16 @@ const SearchFilmGenre = () => {
       console.log(response.data)
 
       if (categoryFilms.length > 0) {
-        setFilms(categoryFilms); // Set films in state
+        setFilms(categoryFilms); 
         setErrorMessage(''); // Clear error message
       } else {
-        setFilms([]); // Clear films state
+        setFilms([]);
         setErrorMessage('Sorry, that film category was not found. Try a different category');
       }
     })
     .catch(error => {
       console.error('Error fetching search results:', error);
-      setFilms([]); // Clear films state
+      setFilms([]); 
       setErrorMessage('An error occurred while searching for the movie.');
     });
 };
@@ -532,7 +531,7 @@ const SearchFilmGenre = () => {
             p="4"
             m="2"
             borderRadius="md"
-            textAlign="center" // Center the text
+            textAlign="center" 
             onClick={() => handleFilmClick(film.film_id)}
             cursor="pointer"
           >
@@ -547,7 +546,7 @@ const SearchFilmGenre = () => {
 const SearchFilmActor = () => {
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
-  const [films, setFilms] = useState([]); // Initialize as an empty array
+  const [films, setFilms] = useState([]); 
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSearch = () => {
@@ -557,16 +556,16 @@ const SearchFilmActor = () => {
         console.log(response.data);
 
         if (actorFilms.length > 0) {
-          setFilms(actorFilms); // Set films in state
+          setFilms(actorFilms); 
           setErrorMessage(''); // Clear error message
         } else {
-          setFilms([]); // Clear films state
+          setFilms([]);
           setErrorMessage('Sorry, no films found for that actor. Try a different name.');
         }
       })
       .catch(error => {
         console.error('Error fetching search results:', error);
-        setFilms([]); // Clear films state
+        setFilms([]); 
         setErrorMessage('An error occurred while searching for the movies.');
       });
   };
@@ -615,7 +614,7 @@ const SearchFilmActor = () => {
             p="4"
             m="2"
             borderRadius="md"
-            textAlign="center" // Center the text
+            textAlign="center" 
             onClick={() => handleFilmClick(film.film_id)}
             cursor="pointer"
           >
