@@ -20,7 +20,12 @@ function App() {
           <Route path="/displayActorDetails/:actor_id" element={<DisplayActorDetails />} />
           <Route path="/SearchFilmGenre" element={<SearchFilmGenre />} />
           <Route path="/SearchFilmActor" element={<SearchFilmActor />} />
+          <Route path="/ViewCustomerList" element={<ViewCustomerList />} />
+          <Route path="/AddCustomer" element={<AddCustomer />} />
+          <Route path="/DeleteCustomer" element={<DeleteCustomer />} />
+          <Route path ="/EditCustomer" element={<EditCustomer />} />
           <Route path="/ViewCustomerDetails" element={<ViewCustomerDetails />} />
+          <Route path="/SearchCustomer" element={<SearchCustomer />} />
         </Routes>
       </ChakraProvider>
     </Router>
@@ -71,7 +76,12 @@ const HomePage = () => {
             <NavLink to="/FilmSearch">Film Search</NavLink>
           </Flex>
           <Flex flexDirection="column" w="48%">
-            <NavLink to="/ViewCustomerDetails">View Customers</NavLink>
+            <NavLink to="/ViewCustomerList">View List of Customers</NavLink>
+            <NavLink to="/AddCustomer">Add Customers</NavLink>
+            <NavLink to="/EditCustomer">Edit Customer Details</NavLink>
+            <NavLink to="/DeleteCustomer">Delete Customer</NavLink>
+            <NavLink to="/ViewCustomerDetails">View Customer Details</NavLink>
+            <NavLink to="/SearchCustomer">Search Customer</NavLink>
           </Flex>
         </Flex>
       </div>
@@ -79,8 +89,173 @@ const HomePage = () => {
   );
 }
 
-// Displays each and every customer in the database
+// View a customer's details, including present and past rentals
 const ViewCustomerDetails = () => {
+
+}
+
+// Search for a customer based on their customer id, first name, or last name. Uses a regex type search
+const SearchCustomer = () => {
+  const navigate = useNavigate();
+  const [searchInput, setSearchInput] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [searchResult, setSearchResult] = useState([]);
+
+  const handleSearch = () => {
+    axios.get('http://localhost:5000/searchCustomer', { params: { searchInput } })
+      .then(response => {
+        const customers = response.data.customers;
+        setSearchResult(customers);
+      })
+      .catch(error => {
+        setErrorMessage('Error searching for customers.');
+        console.error('Error searching for customers:', error);
+      });
+  };
+
+  return (
+    <>
+      <Center bg="blue" h="70px" color="black">
+        <header>
+          <Heading>Search Customer</Heading>
+        </header>
+      </Center>
+      <Box ml='20px' my='20px' mr="85%">
+        <Input
+          type="text"
+          placeholder="Enter customer"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+        <Button
+          variant="outline"
+          colorScheme="black"
+          size="lg"
+          m="2"
+          onClick={handleSearch}
+        >
+          Search
+        </Button>
+      </Box>
+      <Box ml='20px' color="red">
+        {errorMessage && <div>{errorMessage}</div>}
+      </Box>
+      <Box ml='20px' mt='20px'>
+        <Table variant="simple">
+          <Thead>
+            <Tr>
+              <Th>Id</Th>
+              <Th>Name</Th>
+              <Th>Email</Th>
+              <Th>Store Id</Th>
+              <Th>Address Id</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {searchResult.map(customer => (
+              <Tr key={customer.customer_id}>
+                <Td>{customer.customer_id}</Td>
+                <Td>{customer.first_name} {customer.last_name}</Td>
+                <Td>{customer.email}</Td>
+                <Td>{customer.store_id}</Td>
+                <Td>{customer.address_id}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </Box>
+    </>
+  );
+};
+
+// Adds a customer to the database
+const AddCustomer = () => {
+  const { customer_id } = useParams();
+  const [customerAdded, setCustomerAdded] = useState(false); 
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    axios.post(`http://localhost:5000/addCustomer/${customer_id}`, formData)
+      .then(response => {
+        setCustomerAdded(true);
+      })
+      .catch(error => {
+        console.error('Error adding new customer:', error);
+      });
+  };
+
+  return (
+    <div>
+      <Center bg="blue" h="70px" color="black">
+        <header>
+            <Heading>Add Customer</Heading>
+        </header>
+      </Center>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          name="firstName"
+          placeholder="First Name"
+          value={formData.firstName}
+          onChange={handleChange}
+        />
+        <input
+          type="text"
+          name="lastName"
+          placeholder="Last Name"
+          value={formData.lastName}
+          onChange={handleChange}
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={handleChange}
+        />
+        <button type="submit">Add Customer</button>
+      </form>
+      {customerAdded && ( 
+        <div>
+          <h2>Customer Added Successfully</h2>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Edit the customer details in the database
+const EditCustomer = () => {
+
+}
+
+// Delete a customer from the database
+const DeleteCustomer = () => {
+  const {customer_id} = useParams();
+  const [customer, deleteCustomer] = useState([]);
+
+  useEffect(() => {
+    axios.post(`http://localhost:5000/deleteCustomer/${customer_id}`)
+      .then(response => {
+        deleteCustomer(response.data.message);
+      })
+      .catch(error => {
+        console.error('Error deleting data:', error);
+      });
+  }, []);
+}
+
+// Displays each and every customer in the database
+const ViewCustomerList = () => {
   const [customers, setCustomers] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [customersPerPage] = useState(40); // Display the number of customers per page

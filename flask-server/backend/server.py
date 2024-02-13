@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import request, Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from sqlalchemy import text
@@ -57,6 +57,61 @@ def getCustomers():
                 'email': row.email, 'address_id': row.address_id, 'store_id': row.store_id} for row in result]
     return jsonify({'customers': customers})
 
+# Search for the customer based on either first name, last name, or id number
+@app.route('/searchCustomer', methods=['GET'])
+def searchCustomers():
+    search_input = request.args.get('searchInput')
+
+    # original base query
+    query_org = '''
+        SELECT c.first_name, c.last_name, c.customer_id, c.email, c.address_id, c.store_id
+        FROM customer c
+        WHERE 1=1
+    '''
+
+    # Based on search input (first name, last name, id), apply these conditions
+    params = {}
+    if search_input:
+        query_org += " AND (c.first_name LIKE :search_input OR c.last_name LIKE :search_input OR c.customer_id LIKE :search_input)"
+        params['search_input'] = f"%{search_input}%"
+        
+    query = text(query_org)
+    result = db.session.execute(query, params)
+    customers = [{'first_name': row.first_name, 'last_name': row.last_name, 'customer_id': row.customer_id,
+                  'email': row.email, 'address_id': row.address_id, 'store_id': row.store_id} for row in result]
+
+    return jsonify({'customers': customers})
+
+# Adds a customer to the database
+@app.route('/addCustomer/<int:customer_id>', methods=['POST'])
+def addCustomer(customer_id):
+    query = text('''
+    INSERT INTO customer(customer_id)
+    VALUES (:id);
+    ''')
+    
+    db.session.execute(query, {'id': customer_id})
+    db.session.commit()
+    
+    customer = {
+        'customer_id': customer_id,
+    }
+    
+    return jsonify({'message': 'Customer added successfully', 'customer': customer})
+
+# Deletes a customer from the database
+@app.route('/deleteCustomer/<int:customer_id>', methods=['POST'])
+def deleteCustomer(customer_id):
+    query = text('''
+    DELETE FROM customer
+    WHERE customer_id = :customer_id;
+    ''')
+    
+    db.session.execute(query, {"customer_id": customer_id})
+    db.session.commit()
+    return jsonify({'message': 'Customer deleted successfully'})
+
+# Search a film by the title name
 @app.route('/searchByTitle/<string:title>', methods=['GET'])
 def getFilmByTitle(title):
     query = text('''
@@ -69,6 +124,7 @@ def getFilmByTitle(title):
     foundFilm=[{'title': row.title, "film_id": row.film_id} for row in result]
     return jsonify({'film': foundFilm})
 
+# search films based on their category
 @app.route('/searchByCategory/<string:category>', methods=['GET'])
 def getFilmsByCategory(category):
     query = text('''
@@ -83,6 +139,7 @@ def getFilmsByCategory(category):
     foundCategory=[{'film_id': row.film_id, 'title': row.title, 'category_id': row.category_id, 'name': row.name} for row in result]
     return jsonify({'category': foundCategory})
 
+# search films based on actors in film
 @app.route('/searchByActor/<string:name>', methods=['GET'])
 def getFilmsByActor(name):
     query = text('''
