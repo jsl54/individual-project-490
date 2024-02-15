@@ -22,11 +22,20 @@ class Film(db.Model):
     rental_duration = db.Column(db.SmallInteger, nullable=False)
     rental_rate = db.Column(db.DECIMAL(4, 2), nullable=False)
 
+class Rental(db.Model):
+    __tablename__ = "rental"
+    rental_id = db.Column(db.SmallInteger, primary_key=True)
+    rental_date = db.Column(db.String(30))
+    inventory_id = db.Column(db.Integer)
+    customer_id = db.Column(db.Integer)
+    return_date = db.Column(db.String(30))
+    staff_id = db.Column(db.SmallInteger)
+
 class Inventory(db.Model):
     __tablename__ = 'inventory'
     inventory_id = db.Column(db.Integer, primary_key=True)
-    film_id = db.Column(db.SmallInteger, db.ForeignKey('film.film_id'))
-    store_id = db.Column(db.SmallInteger, db.ForeignKey('store.store_id'))
+    film_id = db.Column(db.SmallInteger)
+    store_id = db.Column(db.SmallInteger)
     
 class Actor(db.Model):
     __tablename__ = 'actor'
@@ -36,7 +45,7 @@ class Actor(db.Model):
 
 class Customer(db.Model):
     __tablename__ = 'customer'
-    customer_id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, primary_key=True, autoincrement= True)
     store_id = db.Column(db.Integer)
     first_name = db.Column(db.String(45))
     last_name = db.Column(db.String(45))
@@ -83,33 +92,44 @@ def searchCustomers():
     return jsonify({'customers': customers})
 
 # Adds a customer to the database
-@app.route('/addCustomer/<int:customer_id>', methods=['POST'])
-def addCustomer(customer_id):
-    query = text('''
-    INSERT INTO customer(customer_id)
-    VALUES (:id);
-    ''')
+@app.route('/addCustomer', methods=['POST'])
+def addCustomer():
+    # Extract data for the new customer from the request
+    # For example, you might expect 'first_name' and 'last_name' fields in the request JSON
+    store_id = request.json.get('store_id')
+    first_name = request.json.get('first_name')
+    last_name = request.json.get('last_name')
+    email = request.json.get('email')
+    address_id = request.json.get("address_id")
     
-    db.session.execute(query, {'id': customer_id})
+    # Create a new Customer instance with the provided data
+    new_customer = Customer(store_id=store_id, first_name=first_name, last_name=last_name, email=email, address_id=address_id, active='1')
+    
+    # Add the new customer to the database session
+    db.session.add(new_customer)
+    
+    # Commit the transaction to persist the changes
     db.session.commit()
     
-    customer = {
-        'customer_id': customer_id,
+    # Prepare the response JSON with the newly added customer's ID
+    response_data = {
+        'customer_id': new_customer.customer_id,
+        'message': 'Customer added successfully'
     }
     
-    return jsonify({'message': 'Customer added successfully', 'customer': customer})
+    # Return the response JSON
+    return jsonify(response_data), 201  
 
 # Deletes a customer from the database
-@app.route('/deleteCustomer/<int:customer_id>', methods=['POST'])
+@app.route('/deleteCustomer/<int:customer_id>', methods=['DELETE'])
 def deleteCustomer(customer_id):
-    query = text('''
-    DELETE FROM customer
-    WHERE customer_id = :customer_id;
-    ''')
-    
-    db.session.execute(query, {"customer_id": customer_id})
-    db.session.commit()
-    return jsonify({'message': 'Customer deleted successfully'})
+    customer = Customer.query.get(customer_id)
+    if customer:
+        db.session.delete(customer)
+        db.session.commit()
+        return jsonify({'message': 'Customer deleted successfully'}), 200
+    else:
+        return jsonify({'error': 'Customer not found'}), 404
 
 # Search a film by the title name
 @app.route('/searchByTitle/<string:title>', methods=['GET'])
@@ -155,6 +175,32 @@ def getFilmsByActor(name):
                  'film_id': row.film_id, 'title': row.title} for row in result]
     return jsonify({'name': foundActor})
 
+@app.route('/confirmRental', methods=['POST'])
+def confirmRental():
+    name = request.json.get('fullName')  # Use request.json to access JSON data
+    id = request.json.get('filmId')
+    
+    # check if the customer exists in the database
+    customer = Customer.query.filter_by(first_name=name).first()
+    
+    if customer:
+        # Customer found, add rental information to the rental table
+        rental = Rental(customer_id=customer.customer_id, film_id=id)
+        db.session.add(rental)
+        db.session.commit()
+        return jsonify({'message': 'Rental confirmed for existing customer.'}), 200
+    else:
+        # Customer not found, create a new customer entry first
+        new_customer = Customer(first_name=name)
+        db.session.add(new_customer)
+        db.session.commit()
+
+        # Add rental information to the rental table
+        rental = Rental(customer_id=new_customer.customer_id, film_id=id)
+        db.session.add(rental)
+        db.session.commit()
+        return jsonify({'message': 'New customer added and rental confirmed.'}), 200
+    
 @app.route('/topFiveFilms', methods=['GET'])
 def getMovies():
     # Define the SQL query
