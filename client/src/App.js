@@ -2,7 +2,9 @@
 import React, {useState, useEffect} from 'react';
 import { ChakraProvider } from "@chakra-ui/react";
 import { BrowserRouter as Router, Route, Routes, Link, useParams, useNavigate } from 'react-router-dom';
-import { Center, Text, Heading, Box, HStack, Flex, Button, Input, Td, Tr, Tbody, Table, Th, Thead } from "@chakra-ui/react";
+import { Center, Text, Heading, Box, HStack, Flex, Button, Input, Td, Tr, Tbody, Table, Th, Thead, FormControl, Alert, FormLabel,
+AlertIcon } from "@chakra-ui/react";
+import { FaTimes, FaCheck } from 'react-icons/fa';
 import axios from 'axios';
 
 // defines app component, creates paths to different components with app.js once a button is clicked or an action is done
@@ -123,7 +125,7 @@ const SearchCustomer = () => {
       <Box ml='20px' my='20px' mr="85%">
         <Input
           type="text"
-          placeholder="Enter customer"
+          placeholder="Enter customer or ID"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
         />
@@ -170,68 +172,114 @@ const SearchCustomer = () => {
 
 // Adds a customer to the database
 const AddCustomer = () => {
-  const { customer_id } = useParams();
-  const [customerAdded, setCustomerAdded] = useState(false); 
+  const [customerAdded, setCustomerAdded] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: ''
+    store_id: '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    address_id: ''
   });
+  const [error, setError] = useState('');
 
+  // Update form data upon user entering the data requested
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Reset error message if user starts entering proper fields
+    if (error && formData[e.target.name] !== '') {
+      setError('');
+    }
   };
 
+  // Upon entering the necessary data, add the customer. If an error occurs, display error message to the user
   const handleSubmit = (e) => {
     e.preventDefault();
-    axios.post(`http://localhost:5000/addCustomer/${customer_id}`, formData)
+    axios.post('http://localhost:5000/addCustomer', formData)
       .then(response => {
         setCustomerAdded(true);
       })
       .catch(error => {
-        console.error('Error adding new customer:', error);
+        setError('Error adding customer. Improper fields entered, please try again');
       });
   };
 
+  // UI, displays text fields, request form data, and handles error message and success message
   return (
     <div>
       <Center bg="blue" h="70px" color="black">
-        <header>
-            <Heading>Add Customer</Heading>
-        </header>
+        <Heading>Add Customer</Heading>
       </Center>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="firstName"
-          placeholder="First Name"
-          value={formData.firstName}
-          onChange={handleChange}
-        />
-        <input
-          type="text"
-          name="lastName"
-          placeholder="Last Name"
-          value={formData.lastName}
-          onChange={handleChange}
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-        />
-        <button type="submit">Add Customer</button>
-      </form>
-      {customerAdded && ( 
-        <div>
-          <h2>Customer Added Successfully</h2>
-        </div>
-      )}
+      <Box p="4">
+        <form onSubmit={handleSubmit}>
+          <FormControl mb="4">
+            <FormLabel>Store ID</FormLabel>
+            <Input
+              type="text"
+              name="store_id"
+              placeholder="Enter store ID"
+              value={formData.store_id}
+              onChange={handleChange}
+            />
+          </FormControl>
+          <FormControl mb="4">
+            <FormLabel>First Name</FormLabel>
+            <Input
+              type="text"
+              name="first_name"
+              placeholder="Enter first name"
+              value={formData.first_name}
+              onChange={handleChange}
+            />
+          </FormControl>
+          <FormControl mb="4">
+            <FormLabel>Last Name</FormLabel>
+            <Input
+              type="text"
+              name="last_name"
+              placeholder="Enter last name"
+              value={formData.last_name}
+              onChange={handleChange}
+            />
+          </FormControl>
+          <FormControl mb="4">
+            <FormLabel>Email</FormLabel>
+            <Input
+              type="email"
+              name="email"
+              placeholder="Enter email"
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </FormControl>
+          <FormControl mb="4">
+            <FormLabel>Address ID</FormLabel>
+            <Input
+              type="text"
+              name="address_id"
+              placeholder="Enter address ID"
+              value={formData.address_id}
+              onChange={handleChange}
+            />
+          </FormControl>
+          <Button type="submit" colorScheme="blue">Add Customer</Button>
+        </form>
+        {error && (
+          <Alert mt="4" status="error">
+            <AlertIcon as={FaTimes} />
+            {error}
+          </Alert>
+        )}
+        {customerAdded && (
+          <Alert mt="4" status="success">
+            <AlertIcon as={FaCheck} />
+            Customer added successfully
+          </Alert>
+        )}
+      </Box>
     </div>
   );
 };
+
 
 // Edit the customer details in the database
 const EditCustomer = () => {
@@ -240,19 +288,72 @@ const EditCustomer = () => {
 
 // Delete a customer from the database
 const DeleteCustomer = () => {
-  const {customer_id} = useParams();
-  const [customer, deleteCustomer] = useState([]);
+  const { customer_id } = useParams();
+  const [inputId, setInputId] = useState('');
+  const [deleteMessage, setDeleteMessage] = useState('');
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
+  // use post to modify the database in MySQL
   useEffect(() => {
     axios.post(`http://localhost:5000/deleteCustomer/${customer_id}`)
       .then(response => {
-        deleteCustomer(response.data.message);
+        setDeleteMessage(response.data.message);
       })
       .catch(error => {
         console.error('Error deleting data:', error);
       });
   }, []);
-}
+
+  // Check if the customer ID exists. If not, display a message to the user. If successful, display a "success" to the user
+  const handleDeleteCustomer = () => {
+    axios.delete(`http://localhost:5000/deleteCustomer/${inputId}`)
+      .then(response => {
+        setDeleteSuccess(true);
+        setDeleteMessage(response.data.message);
+      })
+      .catch(error => {
+        if (error.response.status === 404) {
+          setDeleteSuccess(false);
+          setDeleteMessage('Could not delete. There is no customer with that ID.');
+        } else {
+          console.error('Error deleting customer:', error);
+        }
+      });
+  };
+
+
+  // UI, includes text boxes as well as displaying the appropriate message to the user
+  return (
+    <div>
+      <Center bg="blue" h="70px" color="black">
+        <Heading>Delete Customer</Heading>
+      </Center>
+      <Box mt="20px" mx="auto" maxW="400px">
+        <Input
+          type="text"
+          placeholder="Enter Customer ID"
+          value={inputId}
+          onChange={(e) => setInputId(e.target.value)}
+        />
+        <Button
+          mt="4"
+          colorScheme="red"
+          onClick={handleDeleteCustomer}
+        >
+          Delete Customer
+        </Button>
+        {deleteMessage && (
+          <Alert mt="4" status={deleteSuccess ? 'success' : 'error'}>
+            <AlertIcon 
+            // If true, display check icon. Else, display X icon
+            as={deleteSuccess ? FaCheck : FaTimes} />      
+            {deleteMessage}
+          </Alert>
+        )}
+      </Box>
+    </div>
+  );
+};
 
 // Displays each and every customer in the database
 const ViewCustomerList = () => {
@@ -505,7 +606,18 @@ const DisplayFilmDetails = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    console.log(`Renting film ${film_id} for ${fullName}`);
+  
+    // Make a POST request to confirmRental endpoint
+    axios.post('http://localhost:5000/confirmRental', {
+        fullName: fullName,
+        filmId: film_id
+      })
+      .then(response => {
+        console.log('Rental confirmed:', response.data.message);
+      })
+      .catch(error => {
+        console.error('Error confirming rental:', error);
+      });
   };
 
   return (
