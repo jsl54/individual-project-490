@@ -1,7 +1,10 @@
 from flask import request, Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 from flask_cors import CORS
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -18,7 +21,7 @@ class Film(db.Model):
     release_year = db.Column(db.Integer)
     length = db.Column(db.SmallInteger)
     rating = db.Column(db.Enum('G', 'PG', 'PG-13', 'R', 'NC-17'))
-    special_features = db.Column(db.Enum('Trailers', 'Commentaries', 'Deleted Scenes', 'Behind the Scenes'))
+    special_features = db.Column(db.String(100))
     rental_duration = db.Column(db.SmallInteger, nullable=False)
     rental_rate = db.Column(db.DECIMAL(4, 2), nullable=False)
 
@@ -30,7 +33,8 @@ class Rental(db.Model):
     customer_id = db.Column(db.Integer)
     return_date = db.Column(db.String(30))
     staff_id = db.Column(db.SmallInteger)
-
+    film_id = db.Column(db.Integer, db.ForeignKey('film.film_id'))
+    
 class Inventory(db.Model):
     __tablename__ = 'inventory'
     inventory_id = db.Column(db.Integer, primary_key=True)
@@ -53,6 +57,40 @@ class Customer(db.Model):
     address_id = db.Column(db.Integer)
     active = db.Column(db.Integer)
     create_date = db.Column(db.String(30))
+
+@app.route('/returnMovie/<int:rental_id>', methods=['POST'])
+def returnMovie(rental_id):
+    rental = db.session.get(Rental, rental_id)
+
+    if not rental:
+        return jsonify({'error': 'Rental not found'}), 404  # Return a 404 response if rental ID not found
+
+    if rental.return_date is not None:
+        return jsonify({'error': 'Movie has already been returned'}), 400  # Return a 400 response if movie has already been returned
+
+    rental.return_date = datetime.now()
+
+    try:
+        db.session.commit()
+        return jsonify({'message': 'Movie returned successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/viewCustomerDetails/<int:customer_id>', methods=['GET'])
+def viewCustomerDetails(customer_id):
+    query = text('''
+        SELECT c.first_name, c.last_name, c.email, c.store_id, f.title, r.return_date
+        FROM customer c
+        JOIN rental r ON c.customer_id = r.customer_id
+        JOIN inventory i ON r.inventory_id = i.inventory_id
+        JOIN film f ON i.film_id = f.film_id
+        WHERE c.customer_id = :customer_id;
+    ''')
+    result = db.session.execute(query, {"customer_id": customer_id})
+    customer = [{'first_name': row.first_name, 'last_name': row.last_name, 'email': row.email, 'store_id': row.store_id, 'title': row.title,
+                 'return_date': row.return_date} for row in result]
+    return jsonify({'customer': customer}), 200
 
 @app.route('/viewCustomers', methods=['GET'])
 def getCustomers():
@@ -91,33 +129,61 @@ def searchCustomers():
 
     return jsonify({'customers': customers})
 
+# Edit customer information endpoint
+@app.route('/editCustomer/<int:customer_id>', methods=['PATCH'])
+def editCustomer(customer_id):
+    try:
+        # Get the customer object
+        customer = db.session.get(Customer, customer_id)
+        
+        # If the customer is not found, run this
+        if not customer:
+            return jsonify({'error': 'Customer not found'}), 404
+        data = request.json
+
+        # Check the fields entered by the user
+        for field, value in data.items():
+            if value:
+                # Update the customer information based on whether or not they entered data in the field
+                if field == 'firstName':
+                    customer.first_name = value
+                elif field == 'lastName':
+                    customer.last_name = value
+                elif field == 'email':
+                    customer.email = value
+                elif field == 'addressId':
+                    customer.address_id = value
+
+        # Commit changes to the database
+        db.session.commit()
+        
+        return jsonify({'message': 'Customer information updated successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 # Adds a customer to the database
 @app.route('/addCustomer', methods=['POST'])
 def addCustomer():
-    # Extract data for the new customer from the request
-    # For example, you might expect 'first_name' and 'last_name' fields in the request JSON
+    # Get the information requested upon user input
     store_id = request.json.get('store_id')
     first_name = request.json.get('first_name')
     last_name = request.json.get('last_name')
     email = request.json.get('email')
     address_id = request.json.get("address_id")
     
-    # Create a new Customer instance with the provided data
+    # Crate a new customer with the requested data
     new_customer = Customer(store_id=store_id, first_name=first_name, last_name=last_name, email=email, address_id=address_id, active='1')
     
-    # Add the new customer to the database session
+    # Add the new customer to the database and commit changes
     db.session.add(new_customer)
-    
-    # Commit the transaction to persist the changes
     db.session.commit()
     
-    # Prepare the response JSON with the newly added customer's ID
+    # Successful customer creation message
     response_data = {
         'customer_id': new_customer.customer_id,
         'message': 'Customer added successfully'
     }
     
-    # Return the response JSON
     return jsonify(response_data), 201  
 
 # Deletes a customer from the database
@@ -175,31 +241,25 @@ def getFilmsByActor(name):
                  'film_id': row.film_id, 'title': row.title} for row in result]
     return jsonify({'name': foundActor})
 
-@app.route('/confirmRental', methods=['POST'])
-def confirmRental():
-    name = request.json.get('fullName')  # Use request.json to access JSON data
-    id = request.json.get('filmId')
-    
-    # check if the customer exists in the database
-    customer = Customer.query.filter_by(first_name=name).first()
-    
-    if customer:
-        # Customer found, add rental information to the rental table
-        rental = Rental(customer_id=customer.customer_id, film_id=id)
-        db.session.add(rental)
-        db.session.commit()
-        return jsonify({'message': 'Rental confirmed for existing customer.'}), 200
-    else:
-        # Customer not found, create a new customer entry first
-        new_customer = Customer(first_name=name)
-        db.session.add(new_customer)
-        db.session.commit()
+# Creates a new rental table and adds the rental to the database
+@app.route('/addRental', methods=['POST'])
+def add_rental():
+    try:
+        data = request.json
+        print('Received data:', data)  # Add this line for debugging
+        inventory_id = data.get('inventory_id')
+        customer_id = data.get('customer_id')
+        staff_id = data.get('staff_id')
+        
+        if not (inventory_id and customer_id and staff_id):
+            raise ValueError('Missing required fields')
 
-        # Add rental information to the rental table
-        rental = Rental(customer_id=new_customer.customer_id, film_id=id)
-        db.session.add(rental)
-        db.session.commit()
-        return jsonify({'message': 'New customer added and rental confirmed.'}), 200
+        # Add code here to create the rental
+
+        return jsonify({'message': 'Rental added successfully.'}), 201
+    except Exception as e:
+        print('Error:', e)  # Add this line for debugging
+        return jsonify({'error': str(e)}), 400
     
 @app.route('/topFiveFilms', methods=['GET'])
 def getMovies():
