@@ -113,8 +113,10 @@ const ReturnMovie = () => {
           setErrorMessage('No rental ID found');
         } else if (error.response && error.response.status === 400 && error.response.data.error === 'Movie has already been returned') {
           setErrorMessage('Movie has already been returned');
-        } else {
+        } else if (error.response && error.response.data && error.response.data.error) {
           setErrorMessage(error.response.data.error);
+        } else {
+          setErrorMessage('An unknown error occurred');
         }
       });
   };
@@ -863,13 +865,11 @@ const DisplayFilmDetails = () => {
   const confirmRental = (e) => {
     e.preventDefault();
     
-    // Check if all required fields are filled
     if (!fullName || !staffId) {
       setError('Please enter your customer ID and staff ID.');
       return;
     }
     
-    // Check if film details are available
     if (details.length === 0) {
       setError('Film details are not available.');
       return;

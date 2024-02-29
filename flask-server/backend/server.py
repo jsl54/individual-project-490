@@ -33,7 +33,6 @@ class Rental(db.Model):
     customer_id = db.Column(db.Integer)
     return_date = db.Column(db.String(30))
     staff_id = db.Column(db.SmallInteger)
-    film_id = db.Column(db.Integer, db.ForeignKey('film.film_id'))
     
 class Inventory(db.Model):
     __tablename__ = 'inventory'
@@ -246,7 +245,7 @@ def getFilmsByActor(name):
 def add_rental():
     try:
         data = request.json
-        print('Received data:', data)  # Add this line for debugging
+        print('Received data:', data) 
         inventory_id = data.get('inventory_id')
         customer_id = data.get('customer_id')
         staff_id = data.get('staff_id')
@@ -254,11 +253,9 @@ def add_rental():
         if not (inventory_id and customer_id and staff_id):
             raise ValueError('Missing required fields')
 
-        # Add code here to create the rental
-
         return jsonify({'message': 'Rental added successfully.'}), 201
     except Exception as e:
-        print('Error:', e)  # Add this line for debugging
+        print('Error:', e)  
         return jsonify({'error': str(e)}), 400
     
 @app.route('/topFiveFilms', methods=['GET'])
